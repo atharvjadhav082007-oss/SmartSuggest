@@ -77,12 +77,16 @@ int main(int argc, char* argv[]) {
     // If "--server" flag passed, launch HTTP server directly
     if (argc > 1 && (std::string(argv[1]) == "--server" || std::string(argv[1]) == "-s")) {
         int port = 8080;
+        const char* portEnv = std::getenv("PORT");
+        if (portEnv) {
+            try {
+                port = std::stoi(portEnv);
+            } catch (...) {}
+        }
         if (argc > 2) {
             try {
                 port = std::stoi(argv[2]);
-            } catch (...) {
-                port = 8080;
-            }
+            } catch (...) {}
         }
         startServer(port);
         return 0;
