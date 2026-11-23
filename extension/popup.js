@@ -1,5 +1,3 @@
-const API_URL = 'http://localhost:8080/suggest';
-
 const statusBadge = document.getElementById('statusBadge');
 const statusText = document.getElementById('statusText');
 const quickInput = document.getElementById('quickInput');
@@ -11,16 +9,25 @@ const issuesList = document.getElementById('issuesList');
 
 let lastCorrected = '';
 
-// Check C++ Backend Connectivity
+async function queryServer(mode, text) {
+  const tryHost = (host) => {
+    return fetch(`http://${host}:8080/suggest?mode=${mode}&q=${encodeURIComponent(text)}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    }).then(async res => {
+      if (!res.ok) throw new Error();
+      return await res.json();
+    });
+  };
+
+  return tryHost('127.0.0.1').catch(() => tryHost('localhost'));
+}
+
 async function checkServerStatus() {
   try {
-    const res = await fetch(`${API_URL}?mode=autocomplete&q=test`, { method: 'GET' });
-    if (res.ok) {
-      statusBadge.className = 'status-indicator online';
-      statusText.textContent = 'C++ Live (8080)';
-    } else {
-      throw new Error();
-    }
+    await queryServer('autocomplete', 'test');
+    statusBadge.className = 'status-indicator online';
+    statusText.textContent = 'C++ Live (8080)';
   } catch (err) {
     statusBadge.className = 'status-indicator offline';
     statusText.textContent = 'Server Offline';
@@ -35,9 +42,7 @@ async function proofreadText() {
   checkBtn.textContent = 'Checking...';
 
   try {
-    const res = await fetch(`${API_URL}?mode=grammar&q=${encodeURIComponent(text)}`);
-    if (!res.ok) throw new Error('API request failed');
-    const data = await res.json();
+    const data = await queryServer('grammar', text);
 
     lastCorrected = data.corrected || text;
     copyBtn.disabled = false;
@@ -90,5 +95,4 @@ copyBtn.addEventListener('click', () => {
   }
 });
 
-// Run status check on popup open
 checkServerStatus();

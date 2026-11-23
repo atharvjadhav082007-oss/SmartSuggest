@@ -1,7 +1,6 @@
-// SmartSuggest In-Page Content Script
-// Active on Gmail, Outlook, and web compose areas
+// SmartSuggest Content Script
+// Active on Gmail, Outlook, LinkedIn, and general web textareas
 
-const API_ENDPOINT = 'http://localhost:8080/suggest';
 let activeField = null;
 let debounceTimer = null;
 let currentIssues = [];
@@ -9,22 +8,20 @@ let lastCorrected = '';
 let badgeEl = null;
 let popoverEl = null;
 
-// Initialize on page load
 function init() {
   createFloatingBadge();
   attachInputListeners();
 }
 
-// Create floating pill in bottom right of page
 function createFloatingBadge() {
   if (document.getElementById('smartsuggest-badge')) return;
 
   badgeEl = document.createElement('div');
   badgeEl.id = 'smartsuggest-badge';
-  badgeEl.className = 'smartsuggest-badge hidden';
+  badgeEl.className = 'smartsuggest-badge ready';
   badgeEl.innerHTML = `
     <span class="ss-dot"></span>
-    <span class="ss-label" id="ssBadgeText">SmartSuggest</span>
+    <span class="ss-label" id="ssBadgeText">SmartSuggest (Ready)</span>
   `;
   document.body.appendChild(badgeEl);
 
@@ -49,19 +46,31 @@ function attachInputListeners() {
   document.addEventListener('focusin', (e) => {
     if (isEditableField(e.target)) {
       activeField = e.target;
-      positionBadgeNear(activeField);
       badgeEl.classList.remove('hidden');
-      triggerCheck(getTextFromField(activeField));
+      const text = getTextFromField(activeField);
+      if (text.trim().length >= 3) {
+        triggerCheck(text);
+      } else {
+        updateBadge(0, 'ready');
+      }
     }
   });
 
   document.addEventListener('input', (e) => {
     if (isEditableField(e.target)) {
       activeField = e.target;
+      const text = getTextFromField(activeField);
+
+      if (text.trim().length < 3) {
+        updateBadge(0, 'ready');
+        return;
+      }
+
+      updateBadge(0, 'checking');
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        triggerCheck(getTextFromField(activeField));
-      }, 400);
+        triggerCheck(text);
+      }, 350);
     }
   });
 }
@@ -93,66 +102,46 @@ function setTextInField(el, newText) {
   }
 }
 
-function positionBadgeNear(field) {
-  const rect = field.getBoundingClientRect();
-  badgeEl.style.top = `${Math.min(window.innerHeight - 50, rect.bottom - 40)}px`;
-  badgeEl.style.left = `${Math.min(window.innerWidth - 160, rect.right - 140)}px`;
-}
-
-async function triggerCheck(text) {
-  if (!text || text.trim().length < 3) {
-    updateBadge(0, false, 'ready');
+function triggerCheck(text) {
+  if (!chrome.runtime?.id) {
+    console.warn('SmartSuggest: Extension context updated. Please refresh tab.');
     return;
   }
 
-  // Use background service worker to fetch from http://localhost:8080
-  // This bypasses HTTPS Mixed Content blocks on Gmail / Outlook
-  if (chrome.runtime && chrome.runtime.sendMessage) {
-    chrome.runtime.sendMessage(
-      { type: 'CHECK_TEXT', mode: 'grammar', text: text.trim() },
-      (response) => {
-        if (chrome.runtime.lastError || !response || !response.success) {
-          updateBadge(0, true);
-        } else {
-          currentIssues = response.data.issues || [];
-          lastCorrected = response.data.corrected || text;
-          updateBadge(currentIssues.length, false);
-          renderPopoverContent(currentIssues);
-        }
+  chrome.runtime.sendMessage(
+    { type: 'CHECK_TEXT', mode: 'grammar', text: text.trim() },
+    (response) => {
+      if (chrome.runtime.lastError || !response || !response.success) {
+        updateBadge(0, 'offline');
+      } else {
+        currentIssues = response.data.issues || [];
+        lastCorrected = response.data.corrected || text;
+        updateBadge(currentIssues.length, currentIssues.length === 0 ? 'clean' : 'issues');
+        renderPopoverContent(currentIssues);
       }
-    );
-  } else {
-    // Fallback direct fetch
-    try {
-      const res = await fetch(`${API_ENDPOINT}?mode=grammar&q=${encodeURIComponent(text.trim())}`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      currentIssues = data.issues || [];
-      lastCorrected = data.corrected || text;
-      updateBadge(currentIssues.length, false);
-      renderPopoverContent(currentIssues);
-    } catch (err) {
-      updateBadge(0, true);
     }
-  }
+  );
 }
 
-function updateBadge(issueCount, isError, state = '') {
-  const dot = badgeEl.querySelector('.ss-dot');
+function updateBadge(issueCount, state = 'ready') {
+  if (!badgeEl) return;
   const label = badgeEl.querySelector('#ssBadgeText');
 
   badgeEl.className = 'smartsuggest-badge';
 
-  if (isError) {
+  if (state === 'offline') {
     badgeEl.classList.add('error');
     label.textContent = 'SmartSuggest (Offline)';
+  } else if (state === 'checking') {
+    badgeEl.classList.add('checking');
+    label.textContent = 'Checking...';
   } else if (state === 'ready') {
     badgeEl.classList.add('ready');
     label.textContent = 'SmartSuggest (Ready)';
-  } else if (issueCount === 0) {
+  } else if (state === 'clean') {
     badgeEl.classList.add('clean');
     label.textContent = '✓ Clean text';
-  } else {
+  } else if (state === 'issues') {
     badgeEl.classList.add('issues');
     label.textContent = `⚡ ${issueCount} Issue${issueCount > 1 ? 's' : ''}`;
   }
@@ -160,9 +149,6 @@ function updateBadge(issueCount, isError, state = '') {
 
 function togglePopover() {
   if (popoverEl.classList.contains('hidden')) {
-    const badgeRect = badgeEl.getBoundingClientRect();
-    popoverEl.style.top = `${badgeRect.top - 230}px`;
-    popoverEl.style.left = `${Math.max(10, badgeRect.left - 120)}px`;
     popoverEl.classList.remove('hidden');
   } else {
     popoverEl.classList.add('hidden');
@@ -176,7 +162,7 @@ function renderPopoverContent(issues) {
         <strong>SmartSuggest Assistant</strong>
         <span class="ss-clean-tag">✓ Clean</span>
       </div>
-      <p class="ss-clean-msg">No spelling or grammar issues detected in active email/box.</p>
+      <p class="ss-clean-msg">No spelling or grammar issues found in this text.</p>
     `;
     return;
   }
@@ -189,7 +175,7 @@ function renderPopoverContent(issues) {
     <div class="ss-pop-list">
   `;
 
-  issues.slice(0, 5).forEach((iss) => {
+  issues.slice(0, 6).forEach((iss) => {
     html += `
       <div class="ss-pop-item ${iss.severity}">
         <div class="ss-pop-diff">
@@ -204,7 +190,7 @@ function renderPopoverContent(issues) {
   html += `
     </div>
     <button type="button" class="ss-apply-btn" id="ssApplyAllBtn">
-      ✦ Apply Corrections to Email
+      ✦ Apply Corrections to Field
     </button>
   `;
 
@@ -216,11 +202,10 @@ function renderPopoverContent(issues) {
       if (activeField && lastCorrected) {
         setTextInField(activeField, lastCorrected);
         popoverEl.classList.add('hidden');
-        updateBadge(0, false);
+        updateBadge(0, 'clean');
       }
     });
   }
 }
 
-// Start
 init();
