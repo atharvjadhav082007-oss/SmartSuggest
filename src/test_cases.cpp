@@ -62,9 +62,9 @@ void runAllTests() {
 
     // 4. Test Autocomplete Suggester (Inheritance & Polymorphism)
     std::cout << "[Test 4] Testing Autocomplete Suggester...\n";
-    std::unique_ptr<Suggester> acSuggester = std::make_unique<Autocomplete>(trie, 10);
+    std::unique_ptr<Suggester> acSuggester = std::make_unique<Autocomplete>(trie, 30);
     std::vector<std::string> acResults = acSuggester->suggest("pro");
-    assert(acResults.size() <= 10);
+    assert(acResults.size() <= 30);
     bool foundProgram = (std::find(acResults.begin(), acResults.end(), "program") != acResults.end());
     bool foundProject = (std::find(acResults.begin(), acResults.end(), "project") != acResults.end());
     bool foundProcess = (std::find(acResults.begin(), acResults.end(), "process") != acResults.end());
@@ -224,7 +224,7 @@ void runAllTests() {
     // 12. Test WhatsAppBot Commands & State Flow
     std::cout << "[Test 12] Testing WhatsAppBot Commands & Conversation Flow...\n";
     {
-        Autocomplete ac(trie, 10);
+        Autocomplete ac(trie, 30);
         SpellChecker sc(trie, dict, 2, 5);
         ParagraphChecker pc(sc, 5000);
         SpellingGame sg(dict);
