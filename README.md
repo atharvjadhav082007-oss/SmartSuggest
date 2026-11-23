@@ -167,3 +167,15 @@ Executes all **13 automated tests** covering Levenshtein distance, Dictionary en
    - `complete <prefix>` : Up to 10 autocomplete suggestions.
    - `game` : Start the spelling challenge game. The next reply is evaluated as your answer.
    - Any regular text is checked automatically.
+
+---
+
+## ☁️ Deploying the Backend on Render
+
+The repo includes a `Dockerfile` and a `render.yaml` blueprint that build the C++ server on Linux and run it with `./app --server`. The server reads the port from the `PORT` environment variable that Render provides.
+
+1. In Render, choose **New → Blueprint** and select this repository. Render creates the `smartsuggest-api` web service from `render.yaml`.
+2. Optionally set `TWILIO_AUTH_TOKEN` on the service to turn on WhatsApp signature checks.
+3. Copy the service URL (for example `https://smartsuggest-api.onrender.com`).
+4. On Netlify, set the environment variable `VITE_API_BASE_URL` to that URL and redeploy the site so the frontend calls the Render backend.
+5. For the WhatsApp bot, set the Twilio webhook to `https://<your-render-url>/whatsapp` (HTTP POST).

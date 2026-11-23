@@ -1,0 +1,9 @@
+.git
+node_modules
+frontend
+extension
+public_vanilla
+*.exe
+*.o
+app
+test_runner

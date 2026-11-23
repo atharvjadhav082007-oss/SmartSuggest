@@ -12,7 +12,7 @@ else
     TARGET_TEST = test_runner
 endif
 
-COMMON_SRCS = src/Dictionary.cpp src/TrieNode.cpp src/Trie.cpp src/Levenshtein.cpp src/Autocomplete.cpp src/SpellChecker.cpp src/ParagraphChecker.cpp src/SpellingGame.cpp src/WhatsAppBot.cpp
+COMMON_SRCS = src/Dictionary.cpp src/TrieNode.cpp src/Trie.cpp src/Levenshtein.cpp src/Autocomplete.cpp src/SpellChecker.cpp src/ParagraphChecker.cpp src/SpellingGame.cpp src/WhatsAppBot.cpp src/GrammarChecker.cpp
 MAIN_SRCS = $(COMMON_SRCS) src/server.cpp src/main.cpp
 TEST_SRCS = $(COMMON_SRCS) src/test_cases.cpp
 

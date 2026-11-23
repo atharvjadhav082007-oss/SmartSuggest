@@ -30,6 +30,8 @@
     #include <netinet/in.h>
     #include <arpa/inet.h>
     #include <unistd.h>
+    #include <sys/time.h>
+    #include <signal.h>
     typedef int socket_t;
     #define CLOSE_SOCKET(s) close(s)
     #define IS_VALID_SOCKET(s) ((s) >= 0)
@@ -269,6 +271,16 @@ private:
         char buffer[4096];
         size_t header_end_pos = std::string::npos;
 
+        // Drop idle/slow clients so one stalled connection can't block the server
+#ifdef _WIN32
+        DWORD recv_timeout_ms = 10000;
+        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&recv_timeout_ms, sizeof(recv_timeout_ms));
+#else
+        struct timeval recv_timeout{};
+        recv_timeout.tv_sec = 10;
+        setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout));
+#endif
+
         // 1. Read until headers complete (\r\n\r\n)
         while (raw.size() < MAX_TOTAL_BYTES) {
             header_end_pos = raw.find("\r\n\r\n");
@@ -406,7 +418,12 @@ private:
         response_stream << mutable_res.body;
 
         std::string response_str = response_stream.str();
-        send(client_fd, response_str.c_str(), static_cast<int>(response_str.size()), 0);
+        size_t sent = 0;
+        while (sent < response_str.size()) {
+            int n = send(client_fd, response_str.c_str() + sent, static_cast<int>(response_str.size() - sent), 0);
+            if (n <= 0) break;
+            sent += static_cast<size_t>(n);
+        }
     }
 
 public:
@@ -414,6 +431,9 @@ public:
 #ifdef _WIN32
         WSADATA wsa;
         WSAStartup(MAKEWORD(2, 2), &wsa);
+#else
+        // A client closing early must not kill the whole process
+        signal(SIGPIPE, SIG_IGN);
 #endif
     }
 

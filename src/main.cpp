@@ -12,6 +12,7 @@
 #include <string>
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 
 // Forward declaration from server.cpp
 void startServer(int port = 8080, const std::string& dictPath = "words.txt", const std::string& publicDir = "./public");
@@ -77,6 +78,14 @@ int main(int argc, char* argv[]) {
     // If "--server" flag passed, launch HTTP server directly
     if (argc > 1 && (std::string(argv[1]) == "--server" || std::string(argv[1]) == "-s")) {
         int port = 8080;
+        // Cloud hosts such as Render provide the port to bind via $PORT
+        if (const char* envPort = std::getenv("PORT")) {
+            try {
+                port = std::stoi(envPort);
+            } catch (...) {
+                port = 8080;
+            }
+        }
         if (argc > 2) {
             try {
                 port = std::stoi(argv[2]);

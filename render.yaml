@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: smartsuggest-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
