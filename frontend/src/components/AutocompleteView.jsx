@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { fetchSuggest } from '../api';
 
 export default function AutocompleteView({ onMeasureLatency }) {
   const [query, setQuery] = useState('');
@@ -23,7 +24,7 @@ export default function AutocompleteView({ onMeasureLatency }) {
       const start = performance.now();
       try {
         setLoading(true);
-        const res = await fetch(`/suggest?mode=autocomplete&q=${encodeURIComponent(query.trim())}`);
+        const res = await fetchSuggest('autocomplete', query.trim());
         if (!res.ok) throw new Error('API failed');
         const data = await res.json();
         onMeasureLatency(`${(performance.now() - start).toFixed(1)} ms`);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { fetchSuggest } from '../api';
 
 export default function SpellCheckView({ onMeasureLatency }) {
   const [query, setQuery] = useState('');
@@ -25,7 +26,7 @@ export default function SpellCheckView({ onMeasureLatency }) {
     debounceRef.current = setTimeout(async () => {
       const start = performance.now();
       try {
-        const res = await fetch(`/suggest?mode=spellcheck&q=${encodeURIComponent(query.trim())}`);
+        const res = await fetchSuggest('spellcheck', query.trim());
         if (!res.ok) throw new Error('API failed');
         const data = await res.json();
         onMeasureLatency(`${(performance.now() - start).toFixed(1)} ms`);

@@ -2,10 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
+const isCloudDeploy = process.env.VERCEL || process.env.NETLIFY;
+
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: path.resolve(__dirname, '../public'),
+    outDir: isCloudDeploy ? 'dist' : path.resolve(__dirname, '../public'),
     emptyOutDir: true,
   },
   server: {

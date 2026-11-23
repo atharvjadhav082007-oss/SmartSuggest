@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { fetchSuggest } from '../api';
 
 const PARAGRAPH_MAX = 5000;
 
@@ -38,7 +39,7 @@ export default function GrammarView({ onMeasureLatency }) {
     debounceRef.current = setTimeout(async () => {
       const start = performance.now();
       try {
-        const res = await fetch(`/suggest?mode=grammar&q=${encodeURIComponent(text)}`);
+        const res = await fetchSuggest('grammar', text);
         if (!res.ok) throw new Error('API failed');
         const json = await res.json();
         onMeasureLatency(`${(performance.now() - start).toFixed(1)} ms`);

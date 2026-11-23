@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { fetchNewGame, submitGameAnswer } from '../api';
 
 export default function GameView() {
   const [level, setLevel] = useState(1);
@@ -43,7 +44,7 @@ export default function GameView() {
     setShaking(false);
 
     try {
-      const res = await fetch(`/game/new?level=${customLevel}`);
+      const res = await fetchNewGame(customLevel);
       if (!res.ok) throw new Error('Failed to start new game');
       const data = await res.json();
       setSession(data);
@@ -85,8 +86,7 @@ export default function GameView() {
     setIsAnswered(true);
 
     try {
-      const url = `/game/answer?id=${encodeURIComponent(session.id)}&a=${encodeURIComponent(answer.trim())}`;
-      const res = await fetch(url);
+      const res = await submitGameAnswer(session.id, answer.trim());
       if (!res.ok) throw new Error('Submit failed');
       const data = await res.json();
 
