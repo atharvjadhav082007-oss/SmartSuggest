@@ -1,0 +1,19 @@
+# Node.js dependencies
+node_modules/
+frontend/node_modules/
+
+# Compiled binaries and build outputs
+*.exe
+*.o
+*.obj
+frontend/dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
