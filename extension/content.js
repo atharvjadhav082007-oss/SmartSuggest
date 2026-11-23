@@ -100,25 +100,44 @@ function positionBadgeNear(field) {
 }
 
 async function triggerCheck(text) {
-  if (!text || text.trim().length < 4) {
-    updateBadge(0, true);
+  if (!text || text.trim().length < 3) {
+    updateBadge(0, false, 'ready');
     return;
   }
 
-  try {
-    const res = await fetch(`${API_ENDPOINT}?mode=grammar&q=${encodeURIComponent(text.trim())}`);
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    currentIssues = data.issues || [];
-    lastCorrected = data.corrected || text;
-    updateBadge(currentIssues.length, false);
-    renderPopoverContent(currentIssues);
-  } catch (err) {
-    updateBadge(0, true);
+  // Use background service worker to fetch from http://localhost:8080
+  // This bypasses HTTPS Mixed Content blocks on Gmail / Outlook
+  if (chrome.runtime && chrome.runtime.sendMessage) {
+    chrome.runtime.sendMessage(
+      { type: 'CHECK_TEXT', mode: 'grammar', text: text.trim() },
+      (response) => {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          updateBadge(0, true);
+        } else {
+          currentIssues = response.data.issues || [];
+          lastCorrected = response.data.corrected || text;
+          updateBadge(currentIssues.length, false);
+          renderPopoverContent(currentIssues);
+        }
+      }
+    );
+  } else {
+    // Fallback direct fetch
+    try {
+      const res = await fetch(`${API_ENDPOINT}?mode=grammar&q=${encodeURIComponent(text.trim())}`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      currentIssues = data.issues || [];
+      lastCorrected = data.corrected || text;
+      updateBadge(currentIssues.length, false);
+      renderPopoverContent(currentIssues);
+    } catch (err) {
+      updateBadge(0, true);
+    }
   }
 }
 
-function updateBadge(issueCount, isError) {
+function updateBadge(issueCount, isError, state = '') {
   const dot = badgeEl.querySelector('.ss-dot');
   const label = badgeEl.querySelector('#ssBadgeText');
 
@@ -127,6 +146,9 @@ function updateBadge(issueCount, isError) {
   if (isError) {
     badgeEl.classList.add('error');
     label.textContent = 'SmartSuggest (Offline)';
+  } else if (state === 'ready') {
+    badgeEl.classList.add('ready');
+    label.textContent = 'SmartSuggest (Ready)';
   } else if (issueCount === 0) {
     badgeEl.classList.add('clean');
     label.textContent = '✓ Clean text';
